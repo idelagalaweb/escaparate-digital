@@ -38,8 +38,10 @@ export class FirebaseTransport implements CommandTransport {
 
     const baseRef = `${siteId}`;
 
-    // Suscribirse a comandos dirigidos a este player o a todos dentro del site
+    const connectionTime = Date.now();
     const commandsRef = ref(this.db, `${baseRef}/commands`);
+    
+    // Solo escuchamos el último comando para evitar procesar historial antiguo
     onValue(commandsRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
@@ -48,8 +50,12 @@ export class FirebaseTransport implements CommandTransport {
       const lastKey = keys[keys.length - 1];
       const command = data[lastKey] as SyncCommand;
 
-      if (command.target === 'all' || command.target === this.playerId) {
-        this.commandCallbacks.forEach(cb => cb(command));
+      // CRÍTICO: Solo ejecutar si el comando es NUEVO (enviado después de conectar)
+      // O si no tiene timestamp (para simulaciones)
+      if (!command.timestamp || command.timestamp > connectionTime) {
+        if (command.target === 'all' || command.target === this.playerId) {
+          this.commandCallbacks.forEach(cb => cb(command));
+        }
       }
     });
 
