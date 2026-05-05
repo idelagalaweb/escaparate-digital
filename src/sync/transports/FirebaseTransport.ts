@@ -12,6 +12,10 @@ export class FirebaseTransport implements CommandTransport {
   private playerId: PlayerId | 'dashboard' | null = null;
 
   constructor() {
+    console.log('[FirebaseTransport] Iniciando con SiteID:', siteId);
+    console.log('[FirebaseTransport] API Key configurada:', firebaseConfig.apiKey ? 'SÍ' : 'NO');
+    console.log('[FirebaseTransport] DB URL:', firebaseConfig.databaseURL ? 'CONFIGURADA' : 'VACÍA');
+
     // Solo inicializamos si tenemos las credenciales mínimas
     if (!firebaseConfig.apiKey) {
       console.warn('[FirebaseTransport] API Key no configurada. Trabajando en modo dummy.');
@@ -20,6 +24,7 @@ export class FirebaseTransport implements CommandTransport {
     try {
       const app = initializeApp(firebaseConfig);
       this.db = getDatabase(app);
+      console.log('[FirebaseTransport] Firebase inicializado correctamente.');
     } catch (err) {
       console.error('[FirebaseTransport] Error al inicializar Firebase:', err);
     }
