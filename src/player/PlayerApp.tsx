@@ -20,14 +20,24 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
   }, [screenOverride, params]);
 
   const [lastCommand, setLastCommand] = useState<{ id: string; status: PlayerStatus['lastCommandStatus'] } | null>(null);
+  const [lastReceived, setLastReceived] = useState<any>(null);
+  const [lastIgnored, setLastIgnored] = useState<any>(null);
 
   // Suscripción a comandos
   useEffect(() => {
     console.log(`[Player ${screen}] 🛰️ Sistema de escucha activo`);
     const handleCommand = (cmd: SyncCommand) => {
-      if (cmd.target !== 'all' && cmd.target !== screen) return;
+      // Diagnóstico básico
+      const isTarget = cmd.target === 'all' || cmd.target === screen;
+      const isNew = !cmd.timestamp || cmd.timestamp > (Date.now() - 30000); // 30s margen
 
-      console.log(`[Player ${screen}] 📥 Comando recibido: ${cmd.type}`);
+      if (!isTarget) {
+        setLastIgnored({ type: cmd.type, reason: `TARGET_MISMATCH (${cmd.target})`, time: Date.now() });
+        return;
+      }
+
+      setLastReceived({ ...cmd, time: Date.now() });
+      console.log(`[Player ${screen}] 📥 Comando aceptado: ${cmd.type}`);
       setLastCommand({ id: cmd.id, status: 'RECEIVED' });
 
       try {
@@ -114,15 +124,42 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
         </motion.div>
       </AnimatePresence>
 
-      {/* Overlay de Debug */}
+      {/* Overlay de Debug Extendido */}
       {isDebug && (
-        <div className="absolute top-0 left-0 p-6 bg-black/80 text-green-500 font-mono text-[10px] z-[100] border-b border-r border-green-500/20 backdrop-blur-md">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <span className="opacity-50">SCREEN_ID:</span> <span>{screen.toUpperCase()}</span>
-            <span className="opacity-50">CONTENT_ID:</span> <span>{currentContent.id}</span>
-            <span className="opacity-50">PAUSED:</span> <span>{isPaused ? 'YES' : 'NO'}</span>
-            <span className="opacity-50">TRANSPORT:</span> <span>{commandBus.getMode()}</span>
-            <span className="opacity-50">SITE_ID:</span> <span>{import.meta.env.VITE_SITE_ID || 'DEFAULT'}</span>
+        <div className="absolute top-0 left-0 p-6 bg-black/90 text-green-500 font-mono text-[10px] z-[100] border-b border-r border-green-500/20 backdrop-blur-md max-w-sm">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-4">
+            <span className="opacity-50 font-bold uppercase tracking-widest">SISTEMA</span> <span className="text-white">ONLINE</span>
+            <span className="opacity-50">SCREEN:</span> <span>{screen.toUpperCase()}</span>
+            <span className="opacity-50">TRANSPORT:</span> <span>{commandBus.getMode().toUpperCase()}</span>
+            <span className="opacity-50">PAUSED:</span> <span className={isPaused ? "text-red-500 font-bold" : ""}>{isPaused ? 'YES' : 'NO'}</span>
+          </div>
+          
+          <div className="border-t border-green-500/20 pt-4 space-y-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] font-black text-green-500/50 uppercase">Último Recibido:</span>
+              {lastReceived ? (
+                <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                  <div className="flex justify-between">
+                    <span className="text-white font-bold">{lastReceived.type}</span>
+                    <span>{new Date(lastReceived.time).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="text-[8px] opacity-70">ID: {lastReceived.id?.slice(-6)} | T: {lastReceived.target}</div>
+                </div>
+              ) : <span className="opacity-30 italic">Esperando...</span>}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] font-black text-red-500/50 uppercase">Último Ignorado:</span>
+              {lastIgnored ? (
+                <div className="bg-red-500/10 p-2 rounded border border-red-500/20 text-red-400">
+                  <div className="flex justify-between">
+                    <span className="font-bold">{lastIgnored.type}</span>
+                    <span>{new Date(lastIgnored.time).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="text-[8px] opacity-70">Motivo: {lastIgnored.reason}</div>
+                </div>
+              ) : <span className="opacity-30 italic">Ninguno</span>}
+            </div>
           </div>
         </div>
       )}

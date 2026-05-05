@@ -25,6 +25,7 @@ export const Dashboard = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [transportStatus, setTransportStatus] = useState(commandBus.getTransportStatus());
+  const [sentCommands, setSentCommands] = useState<any[]>([]);
 
   useEffect(() => {
     try {
@@ -69,7 +70,9 @@ export const Dashboard = () => {
   }
 
   const sendSyncCommand = (type: any, payload: any = null, target: any = 'all') => {
-    commandBus.sendCommand({ type, payload, target });
+    const cmd = { type, payload, target, id: Math.random().toString(36).substr(2, 9), timestamp: Date.now() };
+    setSentCommands(prev => [cmd, ...prev].slice(0, 10));
+    commandBus.sendCommand(cmd);
   };
 
   const isRealMode = commandBus.getMode() === 'real';
@@ -180,14 +183,42 @@ export const Dashboard = () => {
           </section>
 
           <section className="glass-panel rounded-3xl p-8 border-white/5">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <Activity className="w-5 h-5 text-red-500" />
+                <h2 className="text-xs font-black text-zinc-400 uppercase tracking-[0.3em]">Registro C2 (Enviados)</h2>
+              </div>
+              <div className="text-[9px] text-zinc-600 font-mono">SITE: {siteId}</div>
+            </div>
+            
+            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+              {sentCommands.map((cmd, idx) => (
+                <div key={idx} className="p-3 bg-black/40 rounded-xl border border-white/5 font-mono text-[9px] flex flex-col gap-1">
+                  <div className="flex justify-between">
+                    <span className="text-red-500 font-bold">{cmd.type}</span>
+                    <span className="text-zinc-600">{new Date(cmd.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex justify-between opacity-60">
+                    <span>Target: {cmd.target}</span>
+                    <span>ID: {cmd.id?.slice(-6)}</span>
+                  </div>
+                </div>
+              ))}
+              {sentCommands.length === 0 && (
+                <div className="text-center py-10 text-[10px] text-zinc-700 uppercase tracking-widest font-bold">Sin actividad reciente</div>
+              )}
+            </div>
+          </section>
+
+          <section className="glass-panel rounded-3xl p-8 border-white/5">
             <div className="flex items-center gap-3 mb-8">
               <Tv className="w-5 h-5 text-red-500" />
               <h2 className="text-xs font-black text-zinc-400 uppercase tracking-[0.3em]">Estado del Hardware</h2>
             </div>
             <div className="space-y-4">
-              <DeviceStatus label="TV-SUPERIOR (BRIGHTSIGN 01)" statusObj={playerStates.top} />
-              <DeviceStatus label="TV-CENTRAL (BRIGHTSIGN 02)" statusObj={playerStates.middle} />
-              <DeviceStatus label="TV-INFERIOR (BRIGHTSIGN 03)" statusObj={playerStates.bottom} />
+              <DeviceStatus label="TV-SUPERIOR" statusObj={playerStates.top} />
+              <DeviceStatus label="TV-CENTRAL" statusObj={playerStates.middle} />
+              <DeviceStatus label="TV-INFERIOR" statusObj={playerStates.bottom} />
             </div>
           </section>
         </div>
