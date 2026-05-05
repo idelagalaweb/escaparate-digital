@@ -1,0 +1,183 @@
+/* 
+   DELAGALA STANDALONE ADS
+   Cada TV muestra un anuncio completo (16:9)
+*/
+
+:root {
+  --dg-yellow: #fbb034;
+  --dg-grey: #8b96a4;
+  --dg-dark: #080808;
+  --text-white: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--dg-dark);
+  color: white;
+  overflow: hidden;
+  height: 100vh;
+}
+
+.prototype-viewer { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+
+.top-bar {
+  height: 60px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 30px; background: #111; border-bottom: 1px solid #222;
+}
+
+.brand-name { font-weight: 900; color: var(--dg-yellow); letter-spacing: 1px; }
+
+.dashboard-controls { display: flex; gap: 10px; }
+.mode-btn { padding: 8px 16px; border: none; background: #222; color: #777; cursor: pointer; border-radius: 6px; font-weight: 700; font-size: 0.7rem; }
+.mode-btn.active { background: var(--dg-yellow); color: black; }
+
+/* MAIN LAYOUT */
+.main-layout { flex: 1; display: flex; padding: 15px; gap: 15px; overflow: hidden; }
+
+.side-editor { width: 360px; display: flex; flex-direction: column; background: #121212; border-radius: 12px; padding: 20px; border: 1px solid #222; }
+.property-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.property-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: #1a1a1a; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.property-item.selected { border-color: var(--dg-yellow); background: rgba(251, 176, 52, 0.1); }
+.thumb-container { width: 50px; height: 50px; position: relative; flex-shrink: 0; }
+.thumb-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.cat-tag { position: absolute; top: -5px; left: -5px; font-size: 0.5rem; padding: 2px 5px; border-radius: 3px; background: var(--dg-yellow); color: black; font-weight: 900; }
+
+.p-info { display: flex; flex-direction: column; text-align: left; }
+.p-addr { font-size: 0.8rem; font-weight: 700; }
+.p-price { font-size: 0.7rem; color: var(--dg-yellow); }
+
+/* SIMULADOR TVs */
+.tv-stack {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.5vh; background: #050505; border-radius: 20px; padding: 2vh;
+}
+
+.tv-frame {
+  height: 25vh; aspect-ratio: 16 / 9; background: #000;
+  border: 0.5vh solid #1a1a1a; position: relative; overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* STANDALONE DESIGN - PHOTO FULL BACKGROUND */
+.standalone-delagala { width: 100%; height: 100%; position: relative; background: #000; }
+.property-canvas { 
+  position: absolute; inset: 0; 
+  background-size: cover; background-position: center; 
+  z-index: 1;
+}
+
+.canvas-overlay { 
+  position: absolute; inset: 0; 
+  z-index: 10;
+  display: flex; flex-direction: column; 
+}
+
+.delagala-header-full {
+  display: flex; justify-content: space-between; padding: 0.5vh 1.5vh; height: 25%;
+  position: relative;
+}
+
+.brand-logo-small {
+  font-size: 0.7rem; font-weight: 900; color: var(--dg-yellow); letter-spacing: 2px;
+  text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+}
+
+.thumb-gallery-small {
+  display: flex; flex-direction: column; gap: 3px; width: 22%; height: 160%;
+  position: absolute; right: 0; top: 0; padding: 3px; background: rgba(0,0,0,0.2);
+}
+.gallery-item-small { flex: 1; background-size: cover; background-position: center; border: 0.5px solid white; }
+
+.price-badge-standalone {
+  position: absolute; top: 48%; right: 4%;
+  background: var(--dg-yellow); color: white; padding: 4px 12px;
+  font-size: 0.75rem; font-weight: 900; border-radius: 3px; z-index: 100;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+}
+
+.info-box-standalone {
+  flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 0 3vh 2vh 3vh; 
+}
+.title-standalone { 
+  font-size: 0.95rem; font-weight: 900; color: white; line-height: 1.1; 
+  border-left: 4px solid var(--dg-yellow); padding-left: 12px; 
+  text-transform: uppercase;
+  text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+  /* Protección contra desbordamiento */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.desc-standalone { font-size: 0.45rem; color: #fff; margin-top: 4px; font-weight: 500; max-width: 65%; text-shadow: 1px 1px 5px rgba(0,0,0,0.8); }
+
+.specs-bar-standalone {
+  height: 18%; 
+  background: rgba(139, 150, 164, 0.75); 
+  backdrop-filter: blur(5px); 
+  display: flex; align-items: center; justify-content: space-around; padding: 0 1vh;
+}
+
+/* SPLIT LAYOUT (50/50) */
+.split-layout { display: flex; width: 100%; height: 100%; gap: 2px; background: #222; }
+.split-side { flex: 1; height: 100%; overflow: hidden; position: relative; }
+
+/* MINI VERSION ADJUSTMENTS */
+.is-mini .brand-logo-small { font-size: 0.5rem; letter-spacing: 1px; }
+.is-mini .price-badge-standalone { top: 35%; font-size: 0.55rem; padding: 2px 8px; }
+.is-mini .title-standalone { font-size: 0.65rem; padding-left: 8px; border-left-width: 3px; }
+.is-mini .circle-unit { width: 2.2vh; height: 2.2vh; font-size: 1vh; }
+.is-mini .text-unit { font-size: 0.45rem; }
+.is-mini .footer-standalone { font-size: 0.45rem; padding: 0 1.5vh; }
+.is-mini .info-box-standalone { padding: 0 1.5vh 1vh 1.5vh; }
+.is-mini .delagala-header-full { padding: 0.5vh 1vh; height: 20%; }
+
+.spec-unit { display: flex; align-items: center; gap: 6px; }
+.circle-unit {
+  width: 2.8vh; height: 2.8vh; background: var(--dg-yellow); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4vh;
+}
+.text-unit { font-size: 0.55rem; font-weight: 700; color: #000; display: flex; gap: 3px; align-items: baseline; }
+.text-unit span { font-weight: 900; }
+
+.footer-standalone {
+  height: 8%; background: rgba(251, 176, 52, 0.85); 
+  color: white; display: flex; align-items: center; padding: 0 3vh;
+  font-weight: 900; font-size: 0.55rem; font-style: italic; letter-spacing: 1.5px;
+  /* Protección contra desbordamiento */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* MONUMENTAL MODE (Unified Impact) */
+.monumental-layer {
+  width: 100%; height: 100%;
+  background-size: 100% 300%;
+  position: relative;
+  transition: all 0.5s ease-in-out;
+}
+.monumental-layer.superior { background-position: top; }
+.monumental-layer.centro { background-position: center; }
+.monumental-layer.inferior { background-position: bottom; }
+
+.monumental-overlay {
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.2);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.monumental-logo { font-size: 4rem; font-weight: 900; color: var(--dg-yellow); letter-spacing: 15px; text-shadow: 0 0 30px rgba(251, 176, 52, 0.5); }
+.monumental-slogan { font-size: 1.5rem; font-weight: 300; font-style: italic; color: white; letter-spacing: 2px; }
+
+.monumental-tag { background: red; color: white; padding: 4px 12px; border-radius: 4px; font-weight: 900; font-size: 0.7rem; }
+.pulse { animation: pulseAnim 2s infinite; }
+@keyframes pulseAnim { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+.fade-in-up { animation: fadeInUp 1s ease-out forwards; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* STATUS BAR */
+.status-indicator { margin-right: 20px; }
+.live-tag { color: var(--dg-yellow); font-size: 0.7rem; font-weight: 800; }

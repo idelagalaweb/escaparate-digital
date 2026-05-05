@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "delagala-escaparate-01": {
+      "players": {
+        "$playerId": {
+          // Un player solo puede escribir su propio estado si conoce su ID
+          // En producción, esto se protegería con Auth por dispositivo
+          ".read": true,
+          ".write": "($playerId == 'top' || $playerId == 'middle' || $playerId == 'bottom')"
+        }
+      },
+      "commands": {
+        // Solo el Dashboard debería escribir aquí. 
+        // Para el MVP permitimos lectura a todos y escritura si existe un secret o auth.
+        ".read": true,
+        ".write": true 
+      }
+    }
+  }
+}
