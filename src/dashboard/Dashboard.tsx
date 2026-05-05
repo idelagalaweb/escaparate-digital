@@ -11,17 +11,38 @@ export const Dashboard = () => {
     bottom: null
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    commandBus.onStatusUpdate((status) => {
-      setPlayerStates(prev => ({
-        ...prev,
-        [status.playerId]: status
-      }));
-    });
-    
-    // El dashboard se conecta como monitor global
-    commandBus.connect('dashboard');
+    try {
+      commandBus.onStatusUpdate((status) => {
+        setPlayerStates(prev => ({
+          ...prev,
+          [status.playerId]: status
+        }));
+      });
+      
+      // El dashboard se conecta como monitor global
+      commandBus.connect('dashboard').catch(err => {
+        console.error("Error al conectar con CommandBus:", err);
+        setError("Error de conexión: Verifica las credenciales de Firebase.");
+      });
+    } catch (err) {
+      setError("Error crítico al inicializar el Dashboard.");
+    }
   }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-red-500 flex items-center justify-center p-10 text-center">
+        <div>
+          <h1 className="text-2xl font-bold mb-4">⚠️ ERROR DE SISTEMA</h1>
+          <p>{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-6 px-4 py-2 bg-zinc-800 text-white rounded">Reintentar</button>
+        </div>
+      </div>
+    );
+  }
 
   const sendSyncCommand = (type: any, target: any = 'all') => {
     commandBus.sendCommand({ type, target });

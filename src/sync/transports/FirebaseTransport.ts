@@ -17,8 +17,12 @@ export class FirebaseTransport implements CommandTransport {
       console.warn('[FirebaseTransport] API Key no configurada. Trabajando en modo dummy.');
       return;
     }
-    const app = initializeApp(firebaseConfig);
-    this.db = getDatabase(app);
+    try {
+      const app = initializeApp(firebaseConfig);
+      this.db = getDatabase(app);
+    } catch (err) {
+      console.error('[FirebaseTransport] Error al inicializar Firebase:', err);
+    }
   }
 
   async connect(playerId: PlayerId | 'dashboard'): Promise<void> {
