@@ -103,7 +103,12 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
   }, [screen, orchestrator, isPaused]);
 
   if (!currentContent) {
-    return <div className="bg-black w-full h-full flex items-center justify-center text-white">Cargando contenido...</div>;
+    return (
+      <div className="bg-zinc-950 w-full h-full flex flex-col items-center justify-center border border-white/5">
+        <div className="w-8 h-8 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mb-4"></div>
+        <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Sincronizando...</div>
+      </div>
+    );
   }
 
   return (

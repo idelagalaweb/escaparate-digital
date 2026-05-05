@@ -1,7 +1,8 @@
 {
+  "version": 2,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|js|css|json|ico)).*)",
       "destination": "/index.html"
     }
   ]

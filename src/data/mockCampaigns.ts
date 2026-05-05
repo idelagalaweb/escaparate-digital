@@ -63,7 +63,7 @@ export const mockCampaigns: Campaign[] = [
         duration: 10,
         screens: ['top', 'middle', 'bottom'],
         content: { 
-          url: '/monumental.png', 
+          url: 'https://images.unsplash.com/photo-1497366216548-37526070297c', 
           text: 'TUS SUEÑOS, NUESTRA PASIÓN' 
         }
       }
