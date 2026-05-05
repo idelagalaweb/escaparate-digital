@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, onValue, push, serverTimestamp, onDisconnect, update } from 'firebase/database';
+import { getDatabase, ref, set, onValue, push, serverTimestamp, onDisconnect, update, query, limitToLast, onChildAdded } from 'firebase/database';
 import type { CommandTransport } from './types';
 import type { SyncCommand, PlayerStatus, PlayerId } from '../types';
 import { firebaseConfig, siteId } from '../firebaseConfig';
