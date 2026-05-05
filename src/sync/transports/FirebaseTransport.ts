@@ -40,51 +40,64 @@ export class FirebaseTransport implements CommandTransport {
 
   async connect(playerId: PlayerId | 'dashboard'): Promise<void> {
     if (!this.db) {
-      console.error('[FirebaseTransport] ❌ Intento de conexión sin DB inicializada.');
+      console.error('[FirebaseTransport] ❌ Error: Base de datos no inicializada.');
       return;
     }
     
     this.playerId = playerId;
     this.setStatus('connecting');
 
-    const baseRef = `${siteId}`;
-    console.log(`[FirebaseTransport] 🔌 Conectando como [${playerId}] a [${baseRef}]`);
-
-    // Buffer de tiempo de 10 segundos hacia el pasado para compensar desfases de reloj
-    const connectionTime = Date.now() - 10000; 
-    const commandsRef = ref(this.db, `${baseRef}/commands`);
+    // IMPORTANTE: La ruta debe ser exactamente la misma para emisor y receptor
+    const baseRef = siteId; // Ejemplo: 'delagala-escaparate-01'
+    const commandsPath = `${baseRef}/commands`;
     
-    // Escuchamos comandos
+    console.log(`[FirebaseTransport] 📡 [${playerId}] Escuchando comandos en: ${commandsPath}`);
+    console.log(`[FirebaseTransport] 🆔 SiteID: ${siteId}`);
+
+    const commandsRef = ref(this.db, commandsPath);
+    const connectionTime = Date.now();
+
+    // Usamos onValue para detectar cualquier cambio en la lista de comandos
     onValue(commandsRef, (snapshot) => {
+      console.log(`[FirebaseTransport] 📥 Snapshot recibido desde: ${commandsPath}`);
       const data = snapshot.val();
-      if (!data) return;
       
+      if (!data) {
+        console.log('[FirebaseTransport] ℹ️ No hay comandos en la ruta.');
+        return;
+      }
+      
+      // Obtenemos el comando más reciente de la lista
       const keys = Object.keys(data);
       const lastKey = keys[keys.length - 1];
       const command = data[lastKey] as SyncCommand;
 
-      console.log(`[FirebaseTransport] 📥 Comando recibido en DB: ${command.type}`, {
-        cmdTime: command.timestamp,
-        connTime: connectionTime,
-        diff: command.timestamp ? command.timestamp - connectionTime : 'N/A'
+      console.log(`[FirebaseTransport] 🧐 Analizando comando: ${command.type}`, {
+        target: command.target,
+        me: this.playerId,
+        timestamp: command.timestamp,
+        connTime: connectionTime
       });
 
-      // Si el comando es nuevo o no tiene timestamp, y va dirigido a nosotros
-      if (!command.timestamp || command.timestamp > connectionTime) {
-        if (command.target === 'all' || command.target === this.playerId) {
-          console.log(`[FirebaseTransport] 🎯 Ejecutando comando: ${command.type}`);
-          this.commandCallbacks.forEach(cb => cb(command));
-        }
+      // FILTRO DE SEGURIDAD (Relajado para depuración)
+      const isTarget = command.target === 'all' || command.target === this.playerId;
+      
+      // Aceptamos el comando si es para nosotros
+      if (isTarget) {
+        console.log(`[FirebaseTransport] ✅ Comando ACEPTADO: ${command.type}`);
+        this.commandCallbacks.forEach(cb => cb(command));
       } else {
-        console.log(`[FirebaseTransport] ⏳ Saltando comando antiguo: ${command.type}`);
+        console.log(`[FirebaseTransport] ❌ Comando IGNORADO: No es para este target (${command.target})`);
       }
+    }, (error) => {
+      console.error('[FirebaseTransport] ❌ Error en el listener de comandos:', error);
     });
 
-    // Dashboard: Monitorizar todos los reproductores del site
+    // Dashboard: Monitorizar todos los reproductores
     if (playerId === 'dashboard') {
-      const playersRef = ref(this.db, `${baseRef}/players`);
-      console.log('[FirebaseTransport] 👀 Dashboard escuchando cambios en /players');
-      onValue(playersRef, (snapshot) => {
+      const playersPath = `${baseRef}/players`;
+      console.log(`[FirebaseTransport] 👀 Dashboard monitorizando: ${playersPath}`);
+      onValue(ref(this.db, playersPath), (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
         Object.values(data).forEach((status: any) => {
@@ -93,12 +106,14 @@ export class FirebaseTransport implements CommandTransport {
       });
     } else {
       // Player: Registro y gestión de desconexión
-      const myStatusRef = ref(this.db, `${baseRef}/players/${playerId}`);
-      console.log(`[FirebaseTransport] 💓 Player [${playerId}] configurando onDisconnect`);
+      const myStatusPath = `${baseRef}/players/${playerId}`;
+      const myStatusRef = ref(this.db, myStatusPath);
+      console.log(`[FirebaseTransport] 💓 Heartbeat configurado en: ${myStatusPath}`);
+      
       onDisconnect(myStatusRef).update({ 
         online: false, 
         lastHeartbeat: serverTimestamp() 
-      }).catch(err => console.error('[FirebaseTransport] Error onDisconnect:', err));
+      }).catch(err => console.error('[FirebaseTransport] ❌ Error onDisconnect:', err));
     }
 
     this.setStatus('connected');
@@ -110,14 +125,17 @@ export class FirebaseTransport implements CommandTransport {
 
   async sendCommand(command: Omit<SyncCommand, 'id' | 'timestamp'>): Promise<void> {
     if (!this.db) return;
-    const commandsRef = ref(this.db, `${siteId}/commands`);
+    const commandsPath = `${siteId}/commands`;
+    const commandsRef = ref(this.db, commandsPath);
     const newCommandRef = push(commandsRef);
-    console.log(`[FirebaseTransport] 📤 Enviando comando a la nube: ${command.type}`, command);
+    
+    console.log(`[FirebaseTransport] 📤 ESCRIBIENDO en: ${commandsPath}`, command);
+    
     await set(newCommandRef, {
       ...command,
       id: newCommandRef.key,
       timestamp: serverTimestamp()
-    });
+    }).catch(err => console.error('[FirebaseTransport] ❌ Error al escribir comando:', err));
   }
 
   async sendHeartbeat(status: PlayerStatus): Promise<void> {
