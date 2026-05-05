@@ -13,6 +13,8 @@ export const Dashboard = () => {
 
   const [error, setError] = useState<string | null>(null);
 
+  const [transportStatus, setTransportStatus] = useState(commandBus.getTransportStatus());
+
   useEffect(() => {
     try {
       commandBus.onStatusUpdate((status) => {
@@ -20,6 +22,10 @@ export const Dashboard = () => {
           ...prev,
           [status.playerId]: status
         }));
+      });
+
+      commandBus.onStatusChange((status) => {
+        setTransportStatus(status);
       });
       
       // El dashboard se conecta como monitor global
@@ -37,8 +43,10 @@ export const Dashboard = () => {
       <div className="min-h-screen bg-black text-red-500 flex items-center justify-center p-10 text-center">
         <div>
           <h1 className="text-2xl font-bold mb-4">⚠️ ERROR DE SISTEMA</h1>
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()} className="mt-6 px-4 py-2 bg-zinc-800 text-white rounded">Reintentar</button>
+          <p className="bg-red-500/10 p-4 rounded border border-red-500/30 font-mono text-sm max-w-lg">{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-6 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors font-bold">
+            REINTENTAR CONEXIÓN
+          </button>
         </div>
       </div>
     );
@@ -48,45 +56,60 @@ export const Dashboard = () => {
     commandBus.sendCommand({ type, target });
   };
 
-  const isSimulation = commandBus.getMode() === 'simulation';
+  const isRealMode = commandBus.getMode() === 'real';
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans">
-      {isSimulation && (
-        <div className="bg-amber-600/20 border-b border-amber-600/30 text-amber-400 text-[10px] py-1 text-center font-bold tracking-widest uppercase">
-          ⚠️ MODO SIMULACIÓN LOCAL: No hay conexión real con hardware BrightSign
+    <div className="min-h-screen bg-[#09090b] text-white font-sans selection:bg-red-500/30">
+      {!isRealMode && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-500 text-[10px] py-1.5 text-center font-bold tracking-[0.2em] uppercase animate-pulse-soft">
+          ⚠️ MODO SIMULACIÓN ACTIVO — SIN CONEXIÓN REAL CON PANTALLAS
         </div>
       )}
-      {/* Sidebar / Topbar */}
-      <header className="h-16 border-b border-zinc-800 flex items-center px-8 justify-between bg-zinc-900/50 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 bg-red-600 rounded-md"></div>
-          <h1 className="text-xl font-bold tracking-tight">INMOIA <span className="text-zinc-500 font-normal">ESCAPARATE CTRL</span></h1>
+      
+      {/* Header Premium */}
+      <header className="h-20 border-b border-white/5 flex items-center px-10 justify-between bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-5">
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20">
+            <span className="text-white font-black text-xl">IA</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight leading-none">INMOIA360</h1>
+            <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-[0.1em] mt-1">Digital Signage Control</p>
+          </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex bg-zinc-800 p-1 rounded-lg border border-zinc-700">
+
+        <div className="flex items-center gap-8">
+          {/* Selector de Modo */}
+          <div className="flex bg-zinc-900 p-1.5 rounded-xl border border-white/5 shadow-inner">
             <button 
-              className={`px-3 py-1 text-[9px] rounded-md transition-all ${isSimulation ? 'bg-zinc-700 text-white shadow-inner' : 'text-zinc-500 hover:text-zinc-300'}`}
-              onClick={() => window.location.reload()} // Por ahora recarga para resetear transporte
+              className={`px-4 py-1.5 text-[10px] rounded-lg font-bold transition-all ${!isRealMode ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              onClick={() => commandBus.setMode('simulation')}
             >
               SIMULACIÓN
             </button>
             <button 
-              className="px-3 py-1 text-[9px] rounded-md text-zinc-500 hover:text-zinc-300"
-              onClick={() => alert('Configura las credenciales de Firebase en src/sync/transports/FirebaseTransport.ts')}
+              className={`px-4 py-1.5 text-[10px] rounded-lg font-bold transition-all ${isRealMode ? 'bg-green-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              onClick={() => commandBus.setMode('real')}
             >
               REAL (FIREBASE)
             </button>
           </div>
-          <span className="px-3 py-1 bg-green-900/30 text-green-400 border border-green-800 rounded text-xs">
-            {commandBus.getTransportStatus().toUpperCase()}
-          </span>
-          <button 
-            onClick={() => sendSyncCommand('RELOAD_CONTENT')}
-            className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-xs transition-colors"
-          >
-            RECARGAR TODO
-          </button>
+
+          <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${
+              transportStatus === 'connected' ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${transportStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-[10px] font-black uppercase tracking-widest">{transportStatus}</span>
+            </div>
+            
+            <button 
+              onClick={() => sendSyncCommand('RELOAD_CONTENT')}
+              className="px-5 py-2 bg-zinc-100 hover:bg-white text-black rounded-lg text-[11px] font-bold transition-all active:scale-95 shadow-lg"
+            >
+              RECARGAR TODO
+            </button>
+          </div>
         </div>
       </header>
 
