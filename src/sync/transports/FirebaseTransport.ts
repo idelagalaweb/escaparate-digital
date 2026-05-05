@@ -47,57 +47,51 @@ export class FirebaseTransport implements CommandTransport {
     this.playerId = playerId;
     this.setStatus('connecting');
 
-    // IMPORTANTE: La ruta debe ser exactamente la misma para emisor y receptor
-    const baseRef = siteId; // Ejemplo: 'delagala-escaparate-01'
+    const baseRef = siteId;
     const commandsPath = `${baseRef}/commands`;
     
-    console.log(`[FirebaseTransport] 📡 [${playerId}] Escuchando comandos en: ${commandsPath}`);
-    console.log(`[FirebaseTransport] 🆔 SiteID: ${siteId}`);
-
+    // Referencia y Query
     const commandsRef = ref(this.db, commandsPath);
-    const connectionTime = Date.now();
+    // Escuchamos solo el último comando para evitar procesar historial antiguo al conectar
+    const recentCommandsQuery = query(commandsRef, limitToLast(1));
 
-    // Usamos onValue para detectar cualquier cambio en la lista de comandos
-    onValue(commandsRef, (snapshot) => {
-      console.log(`[FirebaseTransport] 📥 Snapshot recibido desde: ${commandsPath}`);
-      const data = snapshot.val();
+    console.log(`[FirebaseTransport] 📡 [${playerId}] Iniciando escucha en: ${commandsRef.toString()}`);
+
+    // Cambiamos onValue por onChildAdded para una respuesta más limpia a nuevos eventos
+    onChildAdded(recentCommandsQuery, (snapshot) => {
+      console.log(`[FirebaseTransport] 📥 NUEVO HIJO detectado en: ${commandsPath}`);
+      const command = snapshot.val() as SyncCommand;
       
-      if (!data) {
-        console.log('[FirebaseTransport] ℹ️ No hay comandos en la ruta.');
+      if (!command) {
+        console.log('[FirebaseTransport] ⚠️ Snapshot vacío.');
         return;
       }
-      
-      // Obtenemos el comando más reciente de la lista
-      const keys = Object.keys(data);
-      const lastKey = keys[keys.length - 1];
-      const command = data[lastKey] as SyncCommand;
 
-      console.log(`[FirebaseTransport] 🧐 Analizando comando: ${command.type}`, {
+      console.log(`[FirebaseTransport] 🧐 Procesando: ${command.type}`, {
+        id: snapshot.key,
         target: command.target,
-        me: this.playerId,
-        timestamp: command.timestamp,
-        connTime: connectionTime
+        timestamp: command.timestamp
       });
 
-      // FILTRO DE SEGURIDAD (Relajado para depuración)
+      // Filtro de Target
       const isTarget = command.target === 'all' || command.target === this.playerId;
       
-      // Aceptamos el comando si es para nosotros
       if (isTarget) {
-        console.log(`[FirebaseTransport] ✅ Comando ACEPTADO: ${command.type}`);
+        console.log(`[FirebaseTransport] ✅ EJECUTANDO: ${command.type}`);
         this.commandCallbacks.forEach(cb => cb(command));
       } else {
-        console.log(`[FirebaseTransport] ❌ Comando IGNORADO: No es para este target (${command.target})`);
+        console.log(`[FirebaseTransport] ❌ IGNORADO: Target no coincide (${command.target})`);
       }
     }, (error) => {
-      console.error('[FirebaseTransport] ❌ Error en el listener de comandos:', error);
+      console.error('[FirebaseTransport] ❌ Error crítico en listener:', error);
     });
 
     // Dashboard: Monitorizar todos los reproductores
     if (playerId === 'dashboard') {
       const playersPath = `${baseRef}/players`;
-      console.log(`[FirebaseTransport] 👀 Dashboard monitorizando: ${playersPath}`);
-      onValue(ref(this.db, playersPath), (snapshot) => {
+      const playersRef = ref(this.db, playersPath);
+      console.log(`[FirebaseTransport] 👀 Dashboard monitorizando: ${playersRef.toString()}`);
+      onValue(playersRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
         Object.values(data).forEach((status: any) => {
@@ -108,7 +102,7 @@ export class FirebaseTransport implements CommandTransport {
       // Player: Registro y gestión de desconexión
       const myStatusPath = `${baseRef}/players/${playerId}`;
       const myStatusRef = ref(this.db, myStatusPath);
-      console.log(`[FirebaseTransport] 💓 Heartbeat configurado en: ${myStatusPath}`);
+      console.log(`[FirebaseTransport] 💓 Heartbeat en: ${myStatusRef.toString()}`);
       
       onDisconnect(myStatusRef).update({ 
         online: false, 
@@ -129,13 +123,13 @@ export class FirebaseTransport implements CommandTransport {
     const commandsRef = ref(this.db, commandsPath);
     const newCommandRef = push(commandsRef);
     
-    console.log(`[FirebaseTransport] 📤 ESCRIBIENDO en: ${commandsPath}`, command);
+    console.log(`[FirebaseTransport] 📤 ESCRIBIENDO en: ${newCommandRef.toString()}`, command);
     
     await set(newCommandRef, {
       ...command,
       id: newCommandRef.key,
       timestamp: serverTimestamp()
-    }).catch(err => console.error('[FirebaseTransport] ❌ Error al escribir comando:', err));
+    }).catch(err => console.error('[FirebaseTransport] ❌ Error de escritura:', err));
   }
 
   async sendHeartbeat(status: PlayerStatus): Promise<void> {
