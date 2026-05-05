@@ -6,6 +6,12 @@ export class LocalSimulationTransport implements CommandTransport {
   private status: 'connected' | 'disconnected' = 'disconnected';
   private commandCallbacks: ((cmd: SyncCommand) => void)[] = [];
   private statusCallbacks: ((status: PlayerStatus) => void)[] = [];
+  private statusChangeCallbacks: ((status: 'connected' | 'disconnected' | 'connecting') => void)[] = [];
+
+  private setStatus(newStatus: 'connected' | 'disconnected' | 'connecting') {
+    this.status = newStatus as any;
+    this.statusChangeCallbacks.forEach(cb => cb(this.status as any));
+  }
 
   constructor() {
     this.channel = new BroadcastChannel('inmoia_local_sim');
@@ -20,12 +26,12 @@ export class LocalSimulationTransport implements CommandTransport {
   }
 
   async connect(playerId: PlayerId | 'dashboard'): Promise<void> {
-    this.status = 'connected';
+    this.setStatus('connected');
     console.warn(`[SIMULATION] Connected as ${playerId}. Solo visible en este navegador.`);
   }
 
   disconnect(): void {
-    this.status = 'disconnected';
+    this.setStatus('disconnected');
   }
 
   async sendCommand(command: Omit<SyncCommand, 'id' | 'timestamp'>): Promise<void> {
@@ -50,6 +56,14 @@ export class LocalSimulationTransport implements CommandTransport {
   }
 
   getStatus(): "connected" | "disconnected" | "connecting" {
-    return this.status;
+    return this.status as any;
+  }
+
+  onStatusChange(callback: (status: "connected" | "disconnected" | "connecting") => void): void {
+    this.statusChangeCallbacks.push(callback);
+  }
+
+  isConnected(): boolean {
+    return this.status === 'connected';
   }
 }

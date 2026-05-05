@@ -9,7 +9,13 @@ export class FirebaseTransport implements CommandTransport {
   private status: 'connected' | 'disconnected' | 'connecting' = 'disconnected';
   private commandCallbacks: ((cmd: SyncCommand) => void)[] = [];
   private statusCallbacks: ((status: PlayerStatus) => void)[] = [];
+  private statusChangeCallbacks: ((status: 'connected' | 'disconnected' | 'connecting') => void)[] = [];
   private playerId: PlayerId | 'dashboard' | null = null;
+
+  private setStatus(newStatus: 'connected' | 'disconnected' | 'connecting') {
+    this.status = newStatus;
+    this.statusChangeCallbacks.forEach(cb => cb(newStatus));
+  }
 
   constructor() {
     console.log('[FirebaseTransport] Iniciando con SiteID:', siteId);
@@ -34,7 +40,7 @@ export class FirebaseTransport implements CommandTransport {
     if (!this.db) return;
     
     this.playerId = playerId;
-    this.status = 'connecting';
+    this.setStatus('connecting');
 
     const baseRef = `${siteId}`;
 
@@ -75,11 +81,11 @@ export class FirebaseTransport implements CommandTransport {
       onDisconnect(myStatusRef).update({ online: false, lastHeartbeat: serverTimestamp() });
     }
 
-    this.status = 'connected';
+    this.setStatus('connected');
   }
 
   disconnect(): void {
-    this.status = 'disconnected';
+    this.setStatus('disconnected');
   }
 
   async sendCommand(command: Omit<SyncCommand, 'id' | 'timestamp'>): Promise<void> {
@@ -113,5 +119,13 @@ export class FirebaseTransport implements CommandTransport {
 
   getStatus(): 'connected' | 'disconnected' | 'connecting' {
     return this.status;
+  }
+
+  onStatusChange(callback: (status: 'connected' | 'disconnected' | 'connecting') => void): void {
+    this.statusChangeCallbacks.push(callback);
+  }
+
+  isConnected(): boolean {
+    return this.status === 'connected';
   }
 }

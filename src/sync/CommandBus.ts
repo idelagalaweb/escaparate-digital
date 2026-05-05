@@ -2,7 +2,7 @@ import type { CommandTransport } from './transports/types';
 import { LocalSimulationTransport } from './transports/LocalSimulationTransport';
 import { FirebaseTransport } from './transports/FirebaseTransport';
 import type { SyncCommand, PlayerStatus, PlayerId } from './types';
-import { c2Transport } from './firebaseConfig';
+import { c2Transport, firebaseConfig } from './firebaseConfig';
 
 class CommandBus {
   private transport!: CommandTransport;

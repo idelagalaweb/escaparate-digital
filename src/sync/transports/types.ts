@@ -15,4 +15,6 @@ export interface CommandTransport {
   onStatusUpdate(callback: (status: PlayerStatus) => void): void;
   
   getStatus(): 'connected' | 'disconnected' | 'connecting';
+  onStatusChange(callback: (status: 'connected' | 'disconnected' | 'connecting') => void): void;
+  isConnected(): boolean;
 }
