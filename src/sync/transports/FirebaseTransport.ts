@@ -18,36 +18,43 @@ export class FirebaseTransport implements CommandTransport {
   }
 
   constructor() {
-    console.log('[FirebaseTransport] Iniciando con SiteID:', siteId);
-    console.log('[FirebaseTransport] API Key configurada:', firebaseConfig.apiKey ? 'SÍ' : 'NO');
-    console.log('[FirebaseTransport] DB URL:', firebaseConfig.databaseURL ? 'CONFIGURADA' : 'VACÍA');
+    console.log('[FirebaseTransport] 🏗️ Iniciando con SiteID:', siteId);
+    console.log('[FirebaseTransport] 🔑 Configuración detectada:', {
+      apiKey: firebaseConfig.apiKey ? 'PRESENT' : 'MISSING',
+      dbUrl: firebaseConfig.databaseURL ? 'PRESENT' : 'MISSING',
+      projectId: firebaseConfig.projectId ? 'PRESENT' : 'MISSING'
+    });
 
-    // Solo inicializamos si tenemos las credenciales mínimas
     if (!firebaseConfig.apiKey) {
-      console.warn('[FirebaseTransport] API Key no configurada. Trabajando en modo dummy.');
+      console.warn('[FirebaseTransport] ⚠️ API Key no configurada. Trabajando en modo local.');
       return;
     }
     try {
       const app = initializeApp(firebaseConfig);
       this.db = getDatabase(app);
-      console.log('[FirebaseTransport] Firebase inicializado correctamente.');
+      console.log('[FirebaseTransport] ✅ Firebase inicializado correctamente.');
     } catch (err) {
-      console.error('[FirebaseTransport] Error al inicializar Firebase:', err);
+      console.error('[FirebaseTransport] ❌ Error al inicializar Firebase:', err);
     }
   }
 
   async connect(playerId: PlayerId | 'dashboard'): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      console.error('[FirebaseTransport] ❌ Intento de conexión sin DB inicializada.');
+      return;
+    }
     
     this.playerId = playerId;
     this.setStatus('connecting');
 
     const baseRef = `${siteId}`;
+    console.log(`[FirebaseTransport] 🔌 Conectando como [${playerId}] a [${baseRef}]`);
 
-    const connectionTime = Date.now();
+    // Buffer de tiempo de 10 segundos hacia el pasado para compensar desfases de reloj
+    const connectionTime = Date.now() - 10000; 
     const commandsRef = ref(this.db, `${baseRef}/commands`);
     
-    // Solo escuchamos el último comando para evitar procesar historial antiguo
+    // Escuchamos comandos
     onValue(commandsRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
@@ -56,18 +63,27 @@ export class FirebaseTransport implements CommandTransport {
       const lastKey = keys[keys.length - 1];
       const command = data[lastKey] as SyncCommand;
 
-      // CRÍTICO: Solo ejecutar si el comando es NUEVO (enviado después de conectar)
-      // O si no tiene timestamp (para simulaciones)
+      console.log(`[FirebaseTransport] 📥 Comando recibido en DB: ${command.type}`, {
+        cmdTime: command.timestamp,
+        connTime: connectionTime,
+        diff: command.timestamp ? command.timestamp - connectionTime : 'N/A'
+      });
+
+      // Si el comando es nuevo o no tiene timestamp, y va dirigido a nosotros
       if (!command.timestamp || command.timestamp > connectionTime) {
         if (command.target === 'all' || command.target === this.playerId) {
+          console.log(`[FirebaseTransport] 🎯 Ejecutando comando: ${command.type}`);
           this.commandCallbacks.forEach(cb => cb(command));
         }
+      } else {
+        console.log(`[FirebaseTransport] ⏳ Saltando comando antiguo: ${command.type}`);
       }
     });
 
     // Dashboard: Monitorizar todos los reproductores del site
     if (playerId === 'dashboard') {
       const playersRef = ref(this.db, `${baseRef}/players`);
+      console.log('[FirebaseTransport] 👀 Dashboard escuchando cambios en /players');
       onValue(playersRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -76,9 +92,13 @@ export class FirebaseTransport implements CommandTransport {
         });
       });
     } else {
-      // Player: Registro y gestión de desconexión (Heartbeat Offline Fallback)
+      // Player: Registro y gestión de desconexión
       const myStatusRef = ref(this.db, `${baseRef}/players/${playerId}`);
-      onDisconnect(myStatusRef).update({ online: false, lastHeartbeat: serverTimestamp() });
+      console.log(`[FirebaseTransport] 💓 Player [${playerId}] configurando onDisconnect`);
+      onDisconnect(myStatusRef).update({ 
+        online: false, 
+        lastHeartbeat: serverTimestamp() 
+      }).catch(err => console.error('[FirebaseTransport] Error onDisconnect:', err));
     }
 
     this.setStatus('connected');
@@ -92,6 +112,7 @@ export class FirebaseTransport implements CommandTransport {
     if (!this.db) return;
     const commandsRef = ref(this.db, `${siteId}/commands`);
     const newCommandRef = push(commandsRef);
+    console.log(`[FirebaseTransport] 📤 Enviando comando a la nube: ${command.type}`, command);
     await set(newCommandRef, {
       ...command,
       id: newCommandRef.key,

@@ -123,11 +123,25 @@ export const Dashboard = () => {
             </div>
             
             <button 
+              onClick={() => sendSyncCommand('PAUSE')}
+              className="px-6 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-2xl text-[11px] font-black tracking-widest transition-all active:scale-95 border border-red-500/20 flex items-center gap-2 uppercase"
+            >
+              PAUSA
+            </button>
+
+            <button 
+              onClick={() => sendSyncCommand('RESUME')}
+              className="px-6 py-2.5 bg-green-600/10 hover:bg-green-600/20 text-green-500 rounded-2xl text-[11px] font-black tracking-widest transition-all active:scale-95 border border-green-500/20 flex items-center gap-2 uppercase"
+            >
+              PLAY
+            </button>
+
+            <button 
               onClick={() => sendSyncCommand('RELOAD_CONTENT')}
               className="group px-6 py-2.5 bg-zinc-100 hover:bg-white text-black rounded-2xl text-[11px] font-black tracking-widest transition-all active:scale-95 shadow-xl flex items-center gap-2 uppercase"
             >
               <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
-              RECARGAR TODO
+              RECARGAR
             </button>
           </div>
         </div>
@@ -230,7 +244,8 @@ const MetricCard = ({ label, value, unit, color = "text-white" }: any) => (
 );
 
 const DeviceStatus = ({ label, statusObj }: { label: string, statusObj: PlayerStatus | null }) => {
-  const isOnline = statusObj && (Date.now() - statusObj.lastHeartbeat < 5000);
+  // Aumentamos a 15s para dar margen a desfases de reloj en producción
+  const isOnline = statusObj && (Date.now() - statusObj.lastHeartbeat < 15000);
   
   return (
     <div className={`p-4 rounded-2xl border transition-all duration-500 ${

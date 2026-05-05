@@ -10,13 +10,18 @@ class CommandBus {
   private statusCallbacks: Set<(status: string) => void> = new Set();
 
   constructor() {
-    // En producción (Vite/Vercel), si hay API Key, forzamos REAL por defecto
-    const isProd = import.meta.env.PROD;
+    const transportEnv = (import.meta.env.VITE_C2_TRANSPORT || 'local').toLowerCase();
     const hasKeys = !!firebaseConfig.apiKey;
     
-    const preferredMode = c2Transport === 'firebase' ? 'real' : 'simulation';
-    this.mode = (isProd && hasKeys) ? 'real' : preferredMode;
+    // Si el usuario pide firebase expresamente, intentamos usarlo.
+    // Si no, caemos a simulación.
+    if (transportEnv === 'firebase' && hasKeys) {
+      this.mode = 'real';
+    } else {
+      this.mode = 'simulation';
+    }
     
+    console.log(`[CommandBus] 🚀 Modo inicializado: ${this.mode.toUpperCase()} (Env: ${transportEnv}, Keys: ${hasKeys ? 'SÍ' : 'NO'})`);
     this.initializeTransport();
   }
 
