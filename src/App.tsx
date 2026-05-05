@@ -16,6 +16,8 @@ function App() {
     return 'dashboard';
   }, []);
 
+  console.log(`[App] 🧭 Routing mode: ${mode}`);
+
   if (mode === 'diagnostics') {
     return <Diagnostics />;
   }

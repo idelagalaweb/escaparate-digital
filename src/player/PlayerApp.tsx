@@ -23,8 +23,30 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
   const [lastReceived, setLastReceived] = useState<any>(null);
   const [lastIgnored, setLastIgnored] = useState<any>(null);
 
+  const [transportStatus, setTransportStatus] = useState(commandBus.getTransportStatus());
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log("STATE:", {
+      connected: commandBus.isConnected(),
+      status: transportStatus,
+      error: connectionError,
+      initialized: !!currentContent
+    });
+  }, [transportStatus, connectionError, currentContent]);
+
   // Suscripción a comandos
   useEffect(() => {
+    const unsubStatus = commandBus.onStatusChange((status) => {
+      setTransportStatus(status);
+      if (status === 'connected') setConnectionError(null);
+    });
+
+    commandBus.connect(screen).catch(err => {
+      console.error("[PlayerApp] ❌ Error de conexión:", err);
+      setConnectionError(err.message || "Error desconocido");
+    });
+
     console.log(`[Player ${screen}] 🛰️ Sistema de escucha activo`);
     const handleCommand = (cmd: SyncCommand) => {
       // Diagnóstico básico
@@ -100,11 +122,32 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
     return () => clearInterval(interval);
   }, [screen, orchestrator, isPaused]);
 
+  if (connectionError && transportStatus !== 'connected') {
+    return (
+      <div className="min-h-screen bg-[#09090b] text-red-500 flex items-center justify-center p-10 text-center">
+        <div className="glass-panel p-10 rounded-3xl border-red-500/20 max-w-xl neon-border">
+          <h1 className="text-3xl font-black mb-4 tracking-tighter italic">SISTEMA BLOQUEADO</h1>
+          <p className="bg-red-500/10 p-4 rounded-xl border border-red-500/20 font-mono text-sm mb-8 leading-relaxed">
+            {connectionError}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-2xl transition-all font-black tracking-widest uppercase text-sm"
+          >
+            REINTENTAR
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentContent) {
     return (
       <div className="w-full h-full bg-black flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-red-500/20 border-t-red-500 rounded-full animate-spin mb-4"></div>
-        <div className="text-xs font-black text-zinc-500 uppercase tracking-widest">Sincronizando...</div>
+        <div className="text-xs font-black text-zinc-500 uppercase tracking-widest">
+          {transportStatus === 'connected' ? 'Cargando contenido...' : 'Sincronizando con la nube...'}
+        </div>
       </div>
     );
   }
