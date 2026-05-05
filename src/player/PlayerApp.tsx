@@ -11,20 +11,23 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
   const [isPaused, setIsPaused] = useState(false);
   const orchestrator = useMemo(() => new Orchestrator(mockCampaigns), []);
   
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const isDebug = useMemo(() => params.has('debug'), [params]);
+
   const screen = useMemo(() => {
     if (screenOverride) return screenOverride;
-    const params = new URLSearchParams(window.location.search);
     return (params.get('screen') as ScreenPosition) || 'middle';
-  }, [screenOverride]);
+  }, [screenOverride, params]);
 
   const [lastCommand, setLastCommand] = useState<{ id: string; status: PlayerStatus['lastCommandStatus'] } | null>(null);
 
   // Suscripción a comandos
   useEffect(() => {
+    console.log(`[Player ${screen}] 🛰️ Sistema de escucha activo`);
     const handleCommand = (cmd: SyncCommand) => {
       if (cmd.target !== 'all' && cmd.target !== screen) return;
 
-      console.log(`[Player ${screen}] Received Command: ${cmd.type}`);
+      console.log(`[Player ${screen}] 📥 Comando recibido: ${cmd.type}`);
       setLastCommand({ id: cmd.id, status: 'RECEIVED' });
 
       try {
@@ -40,9 +43,6 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
           case 'RELOAD_CONTENT': 
             window.location.reload(); 
             break;
-          case 'START_CAMPAIGN':
-            setLastCommand({ id: cmd.id, status: 'COMPLETED' });
-            break;
           default:
             setLastCommand({ id: cmd.id, status: 'COMPLETED' });
         }
@@ -54,7 +54,7 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
     commandBus.onCommand(handleCommand);
   }, [screen]);
 
-  // Heartbeat periódico con Telemetría Real y Persistencia Offline
+  // Heartbeat periódico
   useEffect(() => {
     const interval = setInterval(() => {
       const status: PlayerStatus = {
@@ -69,9 +69,6 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
         lastCommandStatus: lastCommand?.status,
         transport: commandBus.getMode()
       };
-
-      // Guardar estado para recuperación offline
-      localStorage.setItem(`last_status_${screen}`, JSON.stringify(status));
       
       commandBus.sendHeartbeat(status);
     }, 2000);
@@ -84,18 +81,9 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
     const update = () => {
       const content = orchestrator.getContentForScreen(screen);
       setCurrentContent(prev => {
-        const next = JSON.stringify(prev) === JSON.stringify(content) ? prev : content;
-        // Persistir el contenido actual para arranque rápido sin red
-        if (next) localStorage.setItem(`fast_boot_content_${screen}`, JSON.stringify(next));
-        return next;
+        return JSON.stringify(prev) === JSON.stringify(content) ? prev : content;
       });
     };
-
-    // Al arrancar, intentar cargar del cache si no hay red inmediata
-    const cached = localStorage.getItem(`fast_boot_content_${screen}`);
-    if (cached && !currentContent) {
-      setCurrentContent(JSON.parse(cached));
-    }
 
     update();
     const interval = setInterval(update, 1000);
@@ -104,15 +92,15 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
 
   if (!currentContent) {
     return (
-      <div className="bg-zinc-950 w-full h-full flex flex-col items-center justify-center border border-white/5">
-        <div className="w-8 h-8 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mb-4"></div>
-        <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Sincronizando...</div>
+      <div className="w-full h-full bg-black flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-red-500/20 border-t-red-500 rounded-full animate-spin mb-4"></div>
+        <div className="text-xs font-black text-zinc-500 uppercase tracking-widest">Sincronizando...</div>
       </div>
     );
   }
 
   return (
-    <div className="player-container w-full h-full bg-black overflow-hidden relative">
+    <div className="w-full h-full bg-black overflow-hidden relative cursor-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentContent.id}
@@ -120,53 +108,50 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 1 }}
-          className="w-full h-full"
+          className="w-full h-full absolute inset-0"
         >
           {renderContent(currentContent)}
         </motion.div>
       </AnimatePresence>
+
+      {/* Overlay de Debug */}
+      {isDebug && (
+        <div className="absolute top-0 left-0 p-6 bg-black/80 text-green-500 font-mono text-[10px] z-[100] border-b border-r border-green-500/20 backdrop-blur-md">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+            <span className="opacity-50">SCREEN_ID:</span> <span>{screen.toUpperCase()}</span>
+            <span className="opacity-50">CONTENT_ID:</span> <span>{currentContent.id}</span>
+            <span className="opacity-50">PAUSED:</span> <span>{isPaused ? 'YES' : 'NO'}</span>
+            <span className="opacity-50">TRANSPORT:</span> <span>{commandBus.getMode()}</span>
+            <span className="opacity-50">SITE_ID:</span> <span>{import.meta.env.VITE_SITE_ID || 'DEFAULT'}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const renderContent = (item: PlaylistItem) => {
-  switch (item.type) {
-    case 'image':
-    case 'monumental':
-      return (
-        <div 
-          className="w-full h-full bg-cover bg-center flex items-end p-20" 
-          style={{ backgroundImage: `url(${item.content.url})` }}
-        >
-          {item.content.title && (
-            <div className="bg-black/50 backdrop-blur-md p-10 text-white border-l-8 border-red-600">
-              <h1 className="text-6xl font-bold uppercase">{item.content.title}</h1>
-              {item.content.text && <p className="text-3xl mt-4">{item.content.text}</p>}
-            </div>
-          )}
-        </div>
-      );
-    case 'mixed':
-      return (
-        <div className="grid grid-cols-2 h-full">
-          <div 
-            className="bg-cover bg-center" 
-            style={{ backgroundImage: `url(${item.content.url})` }}
-          />
-          <div className="bg-zinc-900 flex flex-col justify-center p-20 text-white">
-            <h2 className="text-5xl font-bold mb-10">{item.content.title}</h2>
-            {item.content.qrData && (
-              <div className="bg-white p-4 w-64 h-64 mx-auto">
-                {/* Aquí iría un componente de QR real */}
-                <div className="w-full h-full bg-zinc-200 flex items-center justify-center text-black text-center text-sm">
-                  [QR: {item.content.qrData}]
-                </div>
-              </div>
+  return (
+    <div className="w-full h-full relative overflow-hidden bg-zinc-950">
+      <div 
+        className="w-full h-full bg-cover bg-center transition-transform duration-[10s] scale-110" 
+        style={{ backgroundImage: `url(${item.content.url})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-20">
+        {item.content.title && (
+          <div className="max-w-4xl">
+            <div className="w-20 h-1.5 bg-red-600 mb-6" />
+            <h1 className="text-8xl font-black uppercase tracking-tighter text-white leading-none">
+              {item.content.title}
+            </h1>
+            {item.content.text && (
+              <p className="text-4xl mt-6 text-zinc-300 font-light max-w-2xl">
+                {item.content.text}
+              </p>
             )}
           </div>
-        </div>
-      );
-    default:
-      return <div className="text-white p-20">Tipo de contenido no soportado: {item.type}</div>;
-  }
+        )}
+      </div>
+    </div>
+  );
 };
