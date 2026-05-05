@@ -13,6 +13,7 @@ import {
 import { PlayerApp } from '../player/PlayerApp';
 import { mockCampaigns } from '../data/mockCampaigns';
 import { commandBus } from '../sync/CommandBus';
+import { siteId } from '../sync/firebaseConfig';
 import type { PlayerStatus, PlayerId } from '../sync/types';
 
 export const Dashboard = () => {
@@ -67,8 +68,8 @@ export const Dashboard = () => {
     );
   }
 
-  const sendSyncCommand = (type: any, target: any = 'all') => {
-    commandBus.sendCommand({ type, target });
+  const sendSyncCommand = (type: any, payload: any = null, target: any = 'all') => {
+    commandBus.sendCommand({ type, payload, target });
   };
 
   const isRealMode = commandBus.getMode() === 'real';
@@ -149,12 +150,12 @@ export const Dashboard = () => {
                     <div className="flex items-center gap-2 mt-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-zinc-600 group-hover:bg-red-600 transition-colors"></div>
                       <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                        {campaign.items.length} elementos • Loop Infinito
+                        {campaign.playlist.length} elementos • Loop Infinito
                       </p>
                     </div>
                   </div>
                   <button 
-                    onClick={() => sendSyncCommand('PLAY_CAMPAIGN')}
+                    onClick={() => sendSyncCommand('START_CAMPAIGN', { campaignId: campaign.id })}
                     className="p-3 bg-zinc-800 group-hover:bg-red-600 text-white rounded-xl transition-all shadow-lg active:scale-90"
                   >
                     <Play className="w-4 h-4 fill-current" />
@@ -184,7 +185,7 @@ export const Dashboard = () => {
               <Monitor className="w-5 h-5 text-zinc-400" />
               <div className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.4em]">Live Digital Showcase</div>
             </div>
-            <div className="text-[10px] text-zinc-600 font-mono">ID: {import.meta.env.VITE_SITE_ID || 'DELAGALA-01'}</div>
+            <div className="text-[10px] text-zinc-600 font-mono">ID: {siteId}</div>
           </div>
           
           {/* El Escaparate */}
