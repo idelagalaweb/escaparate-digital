@@ -8,7 +8,8 @@ export type SyncCommandType =
   | 'NEXT_ITEM'
   | 'SYNC_MONUMENTAL_MODE'
   | 'RELOAD_CONTENT'
-  | 'HEALTH_CHECK';
+  | 'HEALTH_CHECK'
+  | 'DISPLAY_MESSAGE';
 
 export interface SyncCommand {
   id: string;

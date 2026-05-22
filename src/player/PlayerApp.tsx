@@ -25,6 +25,7 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
 
   const [transportStatus, setTransportStatus] = useState(commandBus.getTransportStatus());
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [customMessage, setCustomMessage] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("STATE:", {
@@ -66,14 +67,23 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
         switch (cmd.type) {
           case 'PAUSE': 
             setIsPaused(true); 
+            setCustomMessage(null);
             setLastCommand({ id: cmd.id, status: 'COMPLETED' });
             break;
           case 'RESUME': 
             setIsPaused(false); 
+            setCustomMessage(null);
             setLastCommand({ id: cmd.id, status: 'COMPLETED' });
             break;
           case 'RELOAD_CONTENT': 
             window.location.reload(); 
+            break;
+          case 'DISPLAY_MESSAGE':
+            if (cmd.payload && cmd.payload.text) {
+              setCustomMessage(cmd.payload.text);
+              setIsPaused(true); // Opcional, pero para centrar atención
+            }
+            setLastCommand({ id: cmd.id, status: 'COMPLETED' });
             break;
           default:
             setLastCommand({ id: cmd.id, status: 'COMPLETED' });
@@ -206,6 +216,42 @@ export const PlayerApp = ({ screenOverride }: { screenOverride?: ScreenPosition 
           </div>
         </div>
       )}
+
+      {/* Overlay de C2 Test */}
+      <AnimatePresence>
+        {customMessage && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.5, ease: "backOut" }}
+            className="absolute inset-0 z-[200] bg-zinc-950 flex flex-col items-center justify-center p-20 text-center"
+          >
+            <div className="absolute top-10 flex items-center gap-4 opacity-50">
+              <div className="w-16 h-1 bg-indigo-500"></div>
+              <h2 className="text-xl font-black text-white tracking-[0.5em] uppercase">ESCAPARATE C2 TEST</h2>
+              <div className="w-16 h-1 bg-indigo-500"></div>
+            </div>
+            
+            <h1 className="text-8xl md:text-[10rem] font-black text-white tracking-tighter leading-none break-words max-w-6xl">
+              {customMessage}
+            </h1>
+            
+            <div className="absolute bottom-10 flex flex-col items-center gap-4">
+              <div className="text-indigo-400 font-mono text-sm">TARGET: {screen.toUpperCase()}</div>
+              <button 
+                onClick={() => {
+                  setCustomMessage(null);
+                  setIsPaused(false);
+                }}
+                className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white rounded-full font-bold tracking-widest text-xs uppercase border border-white/20 transition-all active:scale-95 cursor-pointer"
+              >
+                Cerrar Mensaje (Test)
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

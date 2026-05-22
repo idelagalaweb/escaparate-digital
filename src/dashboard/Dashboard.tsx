@@ -8,7 +8,8 @@ import {
   Activity, 
   Monitor, 
   AlertCircle,
-  Layout
+  Layout,
+  MessageSquare
 } from 'lucide-react';
 import { PlayerApp } from '../player/PlayerApp';
 import { mockCampaigns } from '../data/mockCampaigns';
@@ -26,6 +27,8 @@ export const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [transportStatus, setTransportStatus] = useState(commandBus.getTransportStatus());
   const [sentCommands, setSentCommands] = useState<any[]>([]);
+  const [testMessage, setTestMessage] = useState("Hola mundo");
+  const [testTarget, setTestTarget] = useState<PlayerId | 'all'>('all');
 
   useEffect(() => {
     try {
@@ -206,6 +209,58 @@ export const Dashboard = () => {
               ))}
               {sentCommands.length === 0 && (
                 <div className="text-center py-10 text-[10px] text-zinc-700 uppercase tracking-widest font-bold">Sin actividad reciente</div>
+              )}
+            </div>
+          </section>
+
+          {/* Panel de Prueba C2 */}
+          <section className="glass-panel rounded-3xl p-8 border-white/5 bg-gradient-to-br from-indigo-900/20 to-purple-900/10 border-indigo-500/20">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-xs font-black text-indigo-300 uppercase tracking-[0.3em]">Prueba Hello World C2</h2>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-indigo-400/70 mb-2 uppercase tracking-widest">Mensaje a mostrar</label>
+                <input 
+                  type="text" 
+                  value={testMessage}
+                  onChange={e => setTestMessage(e.target.value)}
+                  className="w-full bg-black/50 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="Escribe un mensaje..."
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <select 
+                  value={testTarget}
+                  onChange={(e) => setTestTarget(e.target.value as any)}
+                  className="bg-black/50 border border-indigo-500/30 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 appearance-none flex-1"
+                >
+                  <option value="all">TODAS LAS PANTALLAS (ALL)</option>
+                  <option value="top">TV SUPERIOR (TOP)</option>
+                  <option value="middle">TV CENTRAL (MIDDLE)</option>
+                  <option value="bottom">TV INFERIOR (BOTTOM)</option>
+                </select>
+                
+                <button 
+                  onClick={() => sendSyncCommand('DISPLAY_MESSAGE', { text: testMessage }, testTarget)}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black tracking-widest transition-all active:scale-95 shadow-lg shadow-indigo-500/20 uppercase whitespace-nowrap"
+                >
+                  Enviar a Pantalla
+                </button>
+              </div>
+              
+              {(!isRealMode || transportStatus !== 'connected') && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-red-400 leading-relaxed font-mono">
+                    <strong>AVISO:</strong> Para enviar a un reproductor real remoto, Firebase debe estar conectado. Actualmente el transporte es: {isRealMode ? transportStatus : 'SIMULACIÓN LOCAL'}.
+                  </p>
+                </div>
               )}
             </div>
           </section>
